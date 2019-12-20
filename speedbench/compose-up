@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -e -x
+
+pushd dummy_server
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -ldflags '-s' -o dummy_server
+popd
+
+pushd dummy_crawler
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -ldflags '-s' -o dummy_crawler
+popd
+
+docker-compose up --build --force-recreate --abort-on-container-exit

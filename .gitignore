@@ -17,4 +17,7 @@
 .idea
 *.iml
 
-/simple-crawler
+/demo/demo
+
+/speedbench/dummy_server/dummy_server
+/speedbench/dummy_crawler/dummy_crawler

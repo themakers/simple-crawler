@@ -1,13 +1,14 @@
-package crawler
+package filters
 
 import (
 	"context"
+	"github.com/themakers/simple-crawler/crawler"
 	"golang.org/x/net/html"
 	"io"
 )
 
-func StreamingGoHTMLLinksFilter() FilterFunc {
-	return func(ctx context.Context, r io.Reader, yield func(pos int, link string) error) error {
+func StreamingGoHTMLLinksFilter() crawler.FilterFunc {
+	return func(ctx context.Context, r io.Reader, yieldTitle func(pos int, title string) error, yieldLink func(pos int, link string) error) error {
 		getHref := func(t html.Token) (ok bool, href string) {
 			for _, a := range t.Attr {
 				if a.Key == "href" {
@@ -42,7 +43,7 @@ func StreamingGoHTMLLinksFilter() FilterFunc {
 					continue
 				}
 
-				if err := yield(-1, url); err != nil {
+				if err := yieldLink(-1, url); err != nil {
 					return err
 				}
 			}

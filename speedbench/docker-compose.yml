@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  dummy_server:
+    build:
+      context: "./dummy_server"
+    ports:
+      - "7532:7532"
+
+  dummy_crawler:
+    build:
+      context: "./dummy_crawler"
+    depends_on:
+      - dummy_server
+    links:
+      - dummy_server

@@ -1,4 +1,4 @@
-package crawler
+package filters
 
 import (
 	"bytes"
@@ -43,7 +43,9 @@ func TestMain(m *testing.M) {
 func BenchmarkStreamingRegexpLinksFilter(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
-		if err := RegexpLinksFilter()(context.Background(), data(), func(pos int, link string) error {
+		if err := RegexpLinksFilter()(context.Background(), data(), func(pos int, title string) error {
+			return nil
+		}, func(pos int, link string) error {
 			return nil
 		}); err != nil {
 			panic(err)
@@ -54,8 +56,28 @@ func BenchmarkStreamingRegexpLinksFilter(b *testing.B) {
 
 func BenchmarkStreamingLinksFilter1024(b *testing.B) {
 
+	filter := StreamingFSMLinksFilter(1024)
+
 	for i := 0; i < b.N; i++ {
-		if err := StreamingLinksFilter(1024)(context.Background(), data(), func(pos int, link string) error {
+		if err := filter(context.Background(), data(), func(pos int, title string) error {
+			return nil
+		}, func(pos int, link string) error {
+			return nil
+		}); err != nil {
+			panic(err)
+		}
+	}
+
+}
+
+func BenchmarkStreamingScannerLinksFilter(b *testing.B) {
+
+	filter := StreamingScannerLinksFilter()
+
+	for i := 0; i < b.N; i++ {
+		if err := filter(context.Background(), data(), func(pos int, title string) error {
+			return nil
+		}, func(pos int, link string) error {
 			return nil
 		}); err != nil {
 			panic(err)
@@ -67,7 +89,9 @@ func BenchmarkStreamingLinksFilter1024(b *testing.B) {
 func BenchmarkStreamingGoHTMLLinksFilter(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
-		if err := StreamingGoHTMLLinksFilter()(context.Background(), data(), func(pos int, link string) error {
+		if err := StreamingGoHTMLLinksFilter()(context.Background(), data(), func(pos int, title string) error {
+			return nil
+		}, func(pos int, link string) error {
 			return nil
 		}); err != nil {
 			panic(err)
@@ -79,7 +103,9 @@ func BenchmarkStreamingGoHTMLLinksFilter(b *testing.B) {
 func BenchmarkGoQueryLinksFilter(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
-		if err := GoQueryLinksFilter()(context.Background(), data(), func(pos int, link string) error {
+		if err := GoQueryLinksFilter()(context.Background(), data(), func(pos int, title string) error {
+			return nil
+		}, func(pos int, link string) error {
 			return nil
 		}); err != nil {
 			panic(err)
@@ -90,7 +116,9 @@ func BenchmarkGoQueryLinksFilter(b *testing.B) {
 
 func TestStreamingRegexpLinksFilter(t *testing.T) {
 	nlinks := 0
-	if err := RegexpLinksFilter()(context.Background(), data(), func(pos int, link string) error {
+	if err := RegexpLinksFilter()(context.Background(), data(), func(pos int, title string) error {
+		return nil
+	}, func(pos int, link string) error {
 		nlinks += 1
 		t.Log("RegexpLinksFilter => ", link)
 		return nil
@@ -102,19 +130,23 @@ func TestStreamingRegexpLinksFilter(t *testing.T) {
 
 func TestStreamingLinksFilter(t *testing.T) {
 	nlinks := 0
-	if err := StreamingLinksFilter(1024)(context.Background(), data(), func(pos int, link string) error {
+	if err := StreamingFSMLinksFilter(1024)(context.Background(), data(), func(pos int, title string) error {
+		return nil
+	}, func(pos int, link string) error {
 		nlinks += 1
-		t.Log("StreamingLinksFilter => ", link)
+		t.Log("StreamingFSMLinksFilter => ", link)
 		return nil
 	}); err != nil {
 		panic(err)
 	}
-	t.Log("StreamingLinksFilter == ", nlinks)
+	t.Log("StreamingFSMLinksFilter == ", nlinks)
 }
 
 func TestStreamingGoHTMLLinksFilter(t *testing.T) {
 	nlinks := 0
-	if err := StreamingGoHTMLLinksFilter()(context.Background(), data(), func(pos int, link string) error {
+	if err := StreamingGoHTMLLinksFilter()(context.Background(), data(), func(pos int, title string) error {
+		return nil
+	}, func(pos int, link string) error {
 		nlinks += 1
 		t.Log("StreamingGoHTMLLinksFilter => ", link)
 		return nil
@@ -126,7 +158,9 @@ func TestStreamingGoHTMLLinksFilter(t *testing.T) {
 
 func TestGoQueryLinksFilter(t *testing.T) {
 	nlinks := 0
-	if err := GoQueryLinksFilter()(context.Background(), data(), func(pos int, link string) error {
+	if err := GoQueryLinksFilter()(context.Background(), data(), func(pos int, title string) error {
+		return nil
+	}, func(pos int, link string) error {
 		nlinks += 1
 		t.Log("GoQueryLinksFilter => ", link)
 		return nil

@@ -1,32 +1,56 @@
-package crawler
+package filters
 
 import (
 	"context"
+	"github.com/themakers/simple-crawler/crawler"
 	"io"
 	"strings"
+	"sync"
 )
+
+// TODO Implement general purpose FSM-scanner and use it here
 
 // FIXME Strange behaviour on larger chunks
 // FIXME Strange behaviour on smaller chunks
-// TODO Make it fetch 'href's only from 'a' tags
-func StreamingLinksFilter(chunkSize int) FilterFunc {
-	return func(ctx context.Context, r io.Reader, yield func(pos int, link string) error) error {
+func StreamingFSMLinksFilter(chunkSize int) crawler.FilterFunc {
+	// FIXME Pool optimization does not work!
+	var pool sync.Pool
+	pool.New = func() interface{} {
+		return make([]byte, 0, 32*1024) //> Average page size on the internet, IMO
+	}
+
+	return func(ctx context.Context, r io.Reader, yieldTitle func(pos int, title string) error, yieldLink func(pos int, link string) error) error {
 		if chunkSize < 1024 {
 			chunkSize = 1024
 		}
 
 		const (
-			hrefStart = "href"
+			hrefStart  = "href"
+			titleStart = "<title>"
+			titleEnd   = "</title>"
+			bodyStart  = "<body"
 		)
 
 		var (
-			buf            = make([]byte, 0, 32*1024) //> Average page size on the internet, IMO
-			str            = ""
-			readTotal      = 0
+			buf       = pool.Get().([]byte)
+			str       = ""
+			readTotal = 0
+
+			titleStartPos = -1
+			titleEndPos   = -1
+			titleFound    = false
+
+			bodyStartPos = -1
+			bodyFound    = false
+
 			hrefMarkEndPos = -1
 			hrefValuePos   = -1
-			eof            = false
+
+			eof = false
 		)
+
+		obuf := buf
+		defer pool.Put(obuf)
 
 		readMore := func() error {
 			n, err := r.Read(buf[len(buf) : len(buf)+chunkSize])
@@ -57,6 +81,9 @@ func StreamingLinksFilter(chunkSize int) FilterFunc {
 
 			delta := origLen - newLen
 
+			titleStartPos -= delta
+			titleEndPos -= delta
+			bodyStartPos -= delta
 			hrefMarkEndPos -= delta
 			hrefValuePos -= delta
 		}
@@ -97,6 +124,33 @@ func StreamingLinksFilter(chunkSize int) FilterFunc {
 			return strings.IndexAny(str, " \"'")
 		}
 
+		findTitleStart := func() bool {
+			if i := strings.Index(str, titleStart); i >= 0 {
+				titleStartPos = i + len(titleStart)
+				return true
+			} else {
+				return false
+			}
+		}
+
+		findTitleEnd := func() bool {
+			if i := strings.Index(str, titleEnd); i >= 0 {
+				titleEndPos = i
+				return true
+			} else {
+				return false
+			}
+		}
+
+		findBodyStart := func() bool {
+			if i := strings.Index(str, bodyStart); i >= 0 {
+				bodyStartPos = i
+				return true
+			} else {
+				return false
+			}
+		}
+
 		for {
 
 			select {
@@ -112,10 +166,45 @@ func StreamingLinksFilter(chunkSize int) FilterFunc {
 			}
 
 			for {
-				if hrefValuePos >= 0 {
+				if !titleFound && titleStartPos < 0 {
+
+					if findTitleStart() {
+						dropHeadUntil(titleStartPos)
+					} else {
+						break
+					}
+
+				} else if !titleFound && titleStartPos >= 0 && titleEndPos < 0 {
+
+					if findTitleEnd() {
+						title := str[:titleEndPos]
+
+						if err := yieldTitle(readTotal-len(str)+titleStartPos, title); err != nil {
+							return err
+						}
+
+						titleEndPos += len(titleEnd)
+
+						titleFound = true
+						dropHeadUntil(titleEndPos)
+					} else {
+						break
+					}
+
+				} else if !bodyFound {
+
+					if findBodyStart() {
+						bodyStartPos += len(bodyStart)
+						bodyFound = true
+						dropHeadUntil(bodyStartPos)
+					} else {
+						break
+					}
+
+				} else if hrefValuePos >= 0 {
 
 					if end := findHrefValueEnd(); end >= 0 {
-						if err := yield(readTotal-len(str)+hrefValuePos, str[:end]); err != nil {
+						if err := yieldLink(readTotal-len(str)+hrefValuePos, str[:end]); err != nil {
 							return err
 						}
 
