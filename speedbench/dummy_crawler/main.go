@@ -42,11 +42,10 @@ func main() {
 		cr := crawler.New(
 			filters.StreamingFSMLinksFilter(1024),
 			func(depth, pos int, origin string, title string) {
-				log.Printf("title found. origin = %s, pos = %d, title = %s;", origin, pos, title)
+				//log.Printf("title found. origin = %s, pos = %d, title = %s;", origin, pos, title)
 			},
 			func(depth, pos int, origin string, originalLink string, link *url.URL, external bool) bool {
 
-				linkText := link.String()
 				link.Fragment = ""
 				linkKey := link.String()
 
@@ -60,13 +59,13 @@ func main() {
 						return false
 					} else {
 						crawled[linkKey] = true
-						log.Printf("url found. external = %t; originalLink = %s; origin = %s, pos = %d, link = %s;", external, originalLink, origin, pos, linkText)
+						//log.Printf("url found. external = %t; originalLink = %s; origin = %s, pos = %d, link = %s;", external, originalLink, origin, pos, linkText)
 
 						atomic.StoreInt64(&tt, int64(time.Now().Sub(t0)))
 						return true
 					}
 				} else {
-					log.Printf("data url found. origin = %s, pos = %d;", origin, pos)
+					//log.Printf("data url found. origin = %s, pos = %d;", origin, pos)
 					return false
 				}
 			}, func(origin, link string, pos int, err error) {
